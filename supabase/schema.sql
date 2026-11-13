@@ -32,4 +32,4 @@ exception when duplicate_object then null; end $$;
 -- housekeeping: drop rooms idle for 2+ days (runs hourly if pg_cron is available)
 create extension if not exists pg_cron;
 select cron.schedule('bunker-cleanup', '17 * * * *',
-  $$delete from public.rooms where updated_at < now() - interval '2 days'$$);
+  $c$delete from public.rooms where updated_at < now() - interval '2 days'$c$);
