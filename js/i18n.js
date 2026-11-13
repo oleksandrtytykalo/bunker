@@ -1,0 +1,114 @@
+// UI strings. Each device picks its own UI language; trait language comes from the host.
+import { createContext, useContext, useState, html } from './lib.js';
+
+const D = {
+  uk: {
+    title: 'БУНКЕР', tagline: 'Місць менше, ніж людей. Переконай, що саме ти маєш вижити.',
+    host_new: 'Створити гру', host_new_d: 'Екран для ТВ: катастрофа, бункер, гравці, голосування',
+    join: 'Приєднатися', join_d: 'Зі смартфона: створи персонажа й увійди в гру',
+    demo: 'Демо з ботами', demo_d: 'Хост + гравець + 5 ботів на одному екрані',
+    code: 'Код кімнати', enter: 'Увійти', no_room: 'Кімнату не знайдено на цьому пристрої',
+    local_note: 'ЛОКАЛЬНИЙ РЕЖИМ: поки немає сервера, хост і гравці синхронізуються лише між вкладками одного пристрою.',
+    ui_lang: 'Мова інтерфейсу', trait_lang: 'Мова характеристик',
+    // lobby
+    lobby: 'Збір вцілілих', scan: 'Скануй, щоб приєднатися', or_open: 'або відкрий', players: 'Гравці',
+    add_bot: '+ Бот', start: 'Почати гру', need_more: 'Потрібно щонайменше {n} гравці (краще 6+)',
+    mature: 'Гострий контент 18+ (ТЦК, корупція)', disc_time: 'Час обговорення', sec: 'с', kick: 'Вигнати',
+    waiting_players: 'Очікуємо на гравців…',
+    // player join
+    callsign: 'Позивний', choose_avatar: 'Емблема', create_char: 'Зареєструватись', game_started: 'Гру вже розпочато. Можна лише спостерігати.',
+    watch: 'Спостерігати', you_in: 'Ви в списку. Очікуйте на старт від хоста.',
+    // phases
+    ph_lobby: 'Лобі', ph_briefing: 'Брифінг', ph_reveal: 'Розкриття', ph_discussion: 'Обговорення', ph_voting: 'Голосування', ph_results: 'Вирок', ph_final: 'Фінал',
+    round: 'Раунд', seats: 'Місць у бункері', alive: 'Живих',
+    h_briefing: 'Ознайомтеся з катастрофою та своїм досьє.',
+    h_reveal_1: 'Раунд 1: усі розкривають ПРОФЕСІЮ.', h_reveal: 'Кожен розкриває одну карту на вибір.',
+    h_discussion: 'Переконайте інших, що ви потрібні бункеру.', h_voting: 'Таємне голосування: кого залишити на поверхні?',
+    h_revote: 'Нічия! Переголосування між лідерами.', h_results: 'Вирок винесено.', h_final: 'Двері бункера зачинено.',
+    next: 'Далі', to_round: 'Почати раунд {n}', to_discussion: 'До обговорення', to_voting: 'До голосування', close_vote: 'Підрахувати голоси', to_final: 'Зачинити бункер',
+    plus30: '+30 с', voted: 'Проголосували', revealed_n: 'Розкрили',
+    // board
+    catastrophe: 'Катастрофа', bunker: 'Бункер', area: 'Площа', stay: 'Перебування', food: 'Їжа', months: 'міс.', rooms: 'Приміщення', locked: 'ЗАСЕКРЕЧЕНО',
+    classified: 'ЗАСЕКРЕЧЕНО', exiled: 'ВИГНАНО', on_surface: 'Залишився на поверхні', survivor: 'У БУНКЕРІ',
+    tie_host: 'Знову нічия. Хост вирішує, хто йде на поверхню:', votes_n: 'гол.',
+    radio: 'Радіоефір',
+    // player
+    tab_dossier: 'Досьє', tab_board: 'Табло', tab_bunker: 'Бункер',
+    tap_reveal: 'Торкніться, щоб розкрити', reveal_q: 'Розкрити «{cat}» для всіх?', yes: 'Так', no: 'Ні', cancel: 'Скасувати',
+    already_revealed: 'Ви вже розкрили карту в цьому раунді', actions: 'Спецкарти', use: 'Застосувати', used: 'Використано', choose_target: 'Оберіть ціль',
+    vote_for: 'Голосувати проти', your_vote: 'Ваш голос', vote_q: 'Залишити {name} на поверхні?', dead_title: 'ВИ ЗАЛИШИЛИСЬ НА ПОВЕРХНІ', dead_d: 'Можете спостерігати за грою до кінця.',
+    you: 'ви', spectator: 'Спостерігач', not_joined: 'Ви не в цій грі',
+    // final
+    verdict: 'Вирок колонії', survivors: 'Вцілілі',
+    v_thrive: 'Колонія процвітає. Через 20 років тут буде нове місто.', v_survive: 'Колонія вижила. Важко, але вижила.',
+    v_struggle: 'Колонія ледь тримається. Історія триває… поки що.', v_extinct: 'Колонія вимерла за три роки.',
+    c_repro: 'Продовження роду', c_food: 'Їжа на весь термін', c_health: 'Здоров’я колективу', c_peace: 'Без внутрішніх загроз', c_morale: 'Бойовий дух',
+    'c_need_tech': 'Техніка та ремонт', 'c_need_med': 'Медицина', 'c_need_defense': 'Оборона', 'c_need_science': 'Наука', 'c_need_rad': 'Радіаційний захист', 'c_need_leader': 'Лідерство', 'c_need_morale': 'Бойовий дух (умова катастрофи)',
+    new_game: 'Нова гра з тими ж гравцями', home: 'На головну',
+    // log
+    l_join: '{a} приєднався', l_start: 'Сигнал тривоги. Гру розпочато.', l_round: '— Раунд {n} —', l_room: 'Відкрито приміщення: {room}', l_reveal: '{a} розкрив «{cat}»',
+    l_action: '{a} застосував «{act}» {b}', l_exiled: '{a} залишився на поверхні', l_revote: 'Нічия — переголосування', l_tie: 'Нічия — рішення за хостом', l_final: 'Бункер зачинено',
+    loading: 'Встановлюємо зв’язок…', online_note: 'ОНЛАЙН: гра синхронізується через сервер — телефони можуть приєднатися з будь-якої мережі.', create_fail: 'Не вдалося створити кімнату. Перевірте з’єднання.',
+    on: 'на', opened: 'ВІДКРИТО', m2: 'м²',
+    // cats
+    cat_profession: 'Професія', cat_biology: 'Біологія', cat_health: 'Здоров’я', cat_hobby: 'Хобі', cat_phobia: 'Фобія', cat_baggage: 'Багаж', cat_fact: 'Факт', cat_character: 'Характер',
+    sandbox_host: 'ТВ (хост)', sandbox_player: 'Телефон (гравець)', open_player_tab: 'Відкрити ще одного гравця',
+    lan_hint: 'Відкрий цю адресу на телефоні в тій самій Wi-Fi мережі',
+  },
+  en: {
+    title: 'BUNKER', tagline: 'Fewer seats than people. Convince them you deserve to survive.',
+    host_new: 'Host a game', host_new_d: 'TV screen: catastrophe, bunker, players, voting',
+    join: 'Join a game', join_d: 'From your phone: create a character and join',
+    demo: 'Demo with bots', demo_d: 'Host + player + 5 bots on one screen',
+    code: 'Room code', enter: 'Enter', no_room: 'Room not found on this device',
+    local_note: 'LOCAL MODE: until the server exists, host and players only sync between tabs on the same device.',
+    ui_lang: 'UI language', trait_lang: 'Trait language',
+    lobby: 'Survivor muster', scan: 'Scan to join', or_open: 'or open', players: 'Players',
+    add_bot: '+ Bot', start: 'Start game', need_more: 'At least {n} players needed (6+ is best)',
+    mature: 'Edgy 18+ content (draft, corruption)', disc_time: 'Discussion time', sec: 's', kick: 'Kick',
+    waiting_players: 'Waiting for players…',
+    callsign: 'Callsign', choose_avatar: 'Emblem', create_char: 'Register', game_started: 'The game has already started. You can only watch.',
+    watch: 'Spectate', you_in: "You're on the list. Wait for the host to start.",
+    ph_lobby: 'Lobby', ph_briefing: 'Briefing', ph_reveal: 'Reveal', ph_discussion: 'Discussion', ph_voting: 'Voting', ph_results: 'Verdict', ph_final: 'Final',
+    round: 'Round', seats: 'Bunker seats', alive: 'Alive',
+    h_briefing: 'Study the catastrophe and your dossier.',
+    h_reveal_1: 'Round 1: everyone reveals their PROFESSION.', h_reveal: 'Everyone reveals one card of their choice.',
+    h_discussion: 'Convince the others the bunker needs you.', h_voting: 'Secret ballot: who stays on the surface?',
+    h_revote: 'A tie! Revote between the leaders.', h_results: 'The verdict is in.', h_final: 'The bunker door is sealed.',
+    next: 'Next', to_round: 'Start round {n}', to_discussion: 'To discussion', to_voting: 'To voting', close_vote: 'Count the votes', to_final: 'Seal the bunker',
+    plus30: '+30 s', voted: 'Voted', revealed_n: 'Revealed',
+    catastrophe: 'Catastrophe', bunker: 'Bunker', area: 'Area', stay: 'Duration', food: 'Food', months: 'mo.', rooms: 'Rooms', locked: 'CLASSIFIED',
+    classified: 'CLASSIFIED', exiled: 'EXILED', on_surface: 'Left on the surface', survivor: 'INSIDE',
+    tie_host: 'Tied again. The host decides who goes to the surface:', votes_n: 'votes',
+    radio: 'Radio feed',
+    tab_dossier: 'Dossier', tab_board: 'Board', tab_bunker: 'Bunker',
+    tap_reveal: 'Tap to reveal', reveal_q: 'Reveal «{cat}» to everyone?', yes: 'Yes', no: 'No', cancel: 'Cancel',
+    already_revealed: 'You already revealed a card this round', actions: 'Action cards', use: 'Use', used: 'Used', choose_target: 'Choose a target',
+    vote_for: 'Vote against', your_vote: 'Your vote', vote_q: 'Leave {name} on the surface?', dead_title: 'YOU WERE LEFT ON THE SURFACE', dead_d: 'You can keep watching the game.',
+    you: 'you', spectator: 'Spectator', not_joined: "You're not in this game",
+    verdict: 'Colony verdict', survivors: 'Survivors',
+    v_thrive: 'The colony thrives. In 20 years a new city will stand here.', v_survive: 'The colony survived. Barely, but it did.',
+    v_struggle: 'The colony is barely holding on. The story goes on… for now.', v_extinct: 'The colony died out within three years.',
+    c_repro: 'Can repopulate', c_food: 'Food for the whole stay', c_health: 'Group health', c_peace: 'No internal threats', c_morale: 'Morale',
+    'c_need_tech': 'Engineering & repairs', 'c_need_med': 'Medicine', 'c_need_defense': 'Defence', 'c_need_science': 'Science', 'c_need_rad': 'Radiation protection', 'c_need_leader': 'Leadership', 'c_need_morale': 'Morale (catastrophe need)',
+    new_game: 'New game, same players', home: 'Home',
+    l_join: '{a} joined', l_start: 'Alarm raised. The game has begun.', l_round: '— Round {n} —', l_room: 'Room unlocked: {room}', l_reveal: '{a} revealed «{cat}»',
+    l_action: '{a} used «{act}» {b}', l_exiled: '{a} was left on the surface', l_revote: 'Tie — revote', l_tie: 'Tie — host decides', l_final: 'The bunker is sealed',
+    loading: 'Establishing link…', online_note: 'ONLINE: the game syncs through the server — phones can join from any network.', create_fail: 'Could not create a room. Check your connection.',
+    on: 'on', opened: 'REVEALED', m2: 'm²',
+    cat_profession: 'Profession', cat_biology: 'Biology', cat_health: 'Health', cat_hobby: 'Hobby', cat_phobia: 'Phobia', cat_baggage: 'Baggage', cat_fact: 'Fact', cat_character: 'Character',
+    sandbox_host: 'TV (host)', sandbox_player: 'Phone (player)', open_player_tab: 'Open another player',
+    lan_hint: 'Open this address on a phone on the same Wi-Fi',
+  },
+};
+
+const LS = 'bunker:uiLang';
+export const I18n = createContext(null);
+
+export function I18nProvider({ children }) {
+  const [lang, setLangState] = useState(() => { try { return localStorage.getItem(LS) || 'uk'; } catch { return 'uk'; } });
+  const setLang = (l) => { setLangState(l); try { localStorage.setItem(LS, l); } catch {} document.documentElement.lang = l; };
+  const t = (k, p = {}) => (D[lang][k] ?? D.en[k] ?? k).replace(/\{(\w+)\}/g, (_, x) => p[x] ?? '');
+  return html`<${I18n.Provider} value=${{ lang, setLang, t }}>${children}<//>`;
+}
+export const useT = () => useContext(I18n);
