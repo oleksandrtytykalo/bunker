@@ -43,12 +43,12 @@ export function exileSchedule(n, seats = seatsFor(n)) {
 }
 
 /** seconds of discussion per alive player, by game speed */
-export const SPEEDS = { fast: 10, slow: 15, xslow: 22 };
+export const SPEEDS = { fast: 12, slow: 24, xslow: 66 };
 /** round 1 medium, round 2 longest, then each round shorter */
 const roundFactor = (r) => (r <= 1 ? 0.8 : r === 2 ? 1.2 : Math.max(0.5, 1.2 - 0.15 * (r - 2)));
 export function discussionSec(speed, round, aliveCount) {
   const raw = aliveCount * (SPEEDS[speed] || SPEEDS.slow) * roundFactor(round);
-  return clamp(Math.round(raw / 15) * 15, 45, 480);
+  return clamp(Math.round(raw / 15) * 15, 45, 1800);
 }
 /** estimate = Σ discussion × 1.5 (reveals + voting) */
 export function estimate(speed, n) {
@@ -59,10 +59,24 @@ export function estimate(speed, n) {
   return { minutes: Math.max(1, Math.round((total * 1.5) / 60)), rounds: sched.length - 1 };
 }
 
+/** small non-reversible hash (cyrb53) so the room state never carries the host key itself */
+export function hashKey(str = '') {
+  let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+  for (let i = 0; i < str.length; i++) {
+    const ch = str.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761); h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
+}
+/** does this device's stored key control the room? (old rooms stored the key in clear) */
+export const isHost = (s, key) => !!(s && key && (s.hostHash ? hashKey(key) === s.hostHash : key === s.hostKey));
+
 export function newGame(code, opts = {}) {
   return {
     code, version: 0, createdAt: Date.now(),
-    admin: !!opts.admin, hostKey: opts.hostKey || uid() + uid(),
+    admin: !!opts.admin, hostHash: opts.hostHash || hashKey(uid() + uid()),
     phase: 'lobby', round: 0,
     traitLang: 'uk', mature: false, speed: 'slow',
     catastrophe: null, bunker: null, seats: 0, schedule: [],
@@ -117,6 +131,8 @@ function dealAll(s) {
 // ── helpers ──────────────────────────────────────────────────
 export const alive = (s) => s.players.filter((p) => p.alive);
 export const findP = (s, id) => s.players.find((p) => p.id === id);
+/** players currently tied (revote or host decision) */
+export const tiedIds = (s) => (s.phase === 'voting' && s.revote ? s.candidates : s.phase === 'results' ? s.tie : []);
 export const totalRounds = (s) => Math.max(s.round, (s.schedule || []).length - 1);
 const log = (s, k, p = {}) => { s.log.push({ t: Date.now(), k, p }); if (s.log.length > 60) s.log.shift(); };
 const hiddenCats = (p) => CATS.filter((c) => p.cards[c] && !p.cards[c].revealed);
@@ -133,7 +149,7 @@ function autoReveal(s) {
   for (const p of alive(s)) {
     if (s.revealed.includes(p.id)) continue;
     const opts = (s.round === 1 ? ['profession'] : hiddenCats(p)).filter((c) => !p.cards[c].revealed);
-    if (opts.length) { const c = pick(opts); p.cards[c].revealed = true; log(s, 'reveal', { a: p.id, cat: c }); }
+    if (opts.length) { const c = pick(opts); p.cards[c].revealed = true; p.cards[c].rr = s.round; log(s, 'reveal', { a: p.id, cat: c }); }
     s.revealed.push(p.id);
   }
 }
@@ -252,7 +268,7 @@ function applyAction(s, p, idx, targetId) {
     case 'expose': {
       const h = hiddenCats(tg);
       if (!h.length) return false;
-      const c = pick(h); tg.cards[c].revealed = true;
+      const c = pick(h); tg.cards[c].revealed = true; tg.cards[c].rr = s.round;
       log(s, 'reveal', { a: tg.id, cat: c });
       break;
     }
@@ -335,6 +351,7 @@ function step(s, a) {
       const p = findP(s, a.id);
       if (!p || !canReveal(s, p, a.cat)) return false;
       p.cards[a.cat].revealed = true;
+      p.cards[a.cat].rr = s.round;
       s.revealed.push(p.id);
       log(s, 'reveal', { a: p.id, cat: a.cat });
       return true;
@@ -367,7 +384,8 @@ function step(s, a) {
     case 'reset': {
       const keep = s.players.filter((p) => !p.left)
         .map((p) => ({ id: p.id, name: p.name, avatar: p.avatar, bot: p.bot, cards: {}, actions: [], alive: true }));
-      Object.assign(s, newGame(s.code, { admin: s.admin, hostKey: s.hostKey }), {
+      Object.assign(s, newGame(s.code, { admin: s.admin, hostHash: s.hostHash }), {
+        hostKey: s.hostKey,
         players: keep, traitLang: s.traitLang, mature: s.mature, speed: s.speed, version: s.version,
       });
       return true;

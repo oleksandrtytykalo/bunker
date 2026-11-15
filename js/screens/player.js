@@ -1,9 +1,9 @@
 import { html, useState } from '../lib.js';
 import { useT } from '../i18n.js';
 import { CATS, AVATARS } from '../content.js';
-import { alive, findP, canReveal, actionOf, uid } from '../engine.js';
+import { alive, findP, canReveal, actionOf, uid, votesNeeded, discussionSec, totalRounds } from '../engine.js';
 import { useRoom } from '../transport.js';
-import { Brand, UiLang, PhaseBadge, Timer, TraitCard, CatastrophePanel, BunkerPanel, LogFeed, PlayerTile, SeatMeter, BlockPanel, Modal, hint, Loading, ModeNote } from '../ui.js';
+import { Brand, UiLang, PhaseBadge, Timer, TraitCard, CatastrophePanel, BunkerPanel, LogFeed, PlayerTile, SeatMeter, BlockPanel, TiePanel, Modal, hint, Loading, ModeNote, isFresh } from '../ui.js';
 import { NotFound, Results, Final } from './host.js';
 
 const PID = (code) => `bunker:pid:${code}`;
@@ -95,11 +95,13 @@ function InGame({ s, me, dispatch }) {
   };
 
   return html`<div class="pad">
+    <${RoundIntro} s=${s} me=${me} />
     <div class="status panel">
       <div class="status-r"><${PhaseBadge} s=${s} />${s.phase === 'discussion' && html`<${Timer} end=${s.timerEnd} />`}</div>
       <div class="hint">${hint(s, t)}</div>
       ${me && s.phase === 'reveal' && me.alive && s.revealed.includes(me.id) && html`<div class="dim">✓ ${t('already_revealed')}</div>`}
       <${BlockPanel} s=${s} />
+      <${TiePanel} s=${s} />
     </div>
 
     ${me && !me.alive && html`<div class="panel dead-banner"><b>${t('dead_title')}</b><span>${t('dead_d')}</span></div>`}
@@ -147,7 +149,7 @@ function Dossier({ s, me, onReveal, onAction }) {
       <div class="sheet-h"><span>ОСОБОВА СПРАВА / PERSONAL FILE</span><span>№ ${me.id.slice(-4).toUpperCase()}</span></div>
       ${CATS.map((c) => {
         const can = canReveal(s, me, c);
-        return html`<${TraitCard} cat=${c} card=${me.cards[c]} lang=${s.traitLang} hidden=${false} can=${can} onClick=${can ? () => onReveal(c) : undefined} />`;
+        return html`<${TraitCard} cat=${c} card=${me.cards[c]} lang=${s.traitLang} hidden=${false} fresh=${isFresh(s, me.cards[c])} can=${can} onClick=${can ? () => onReveal(c) : undefined} />`;
       })}
       ${s.phase === 'reveal' && !s.revealed.includes(me.id) && me.alive && html`<div class="dim tap-hint">▶ ${t('tap_reveal')}</div>`}
     </div>
@@ -169,5 +171,28 @@ function Dossier({ s, me, onReveal, onAction }) {
       <div class="vote-list">${others.map((p) => html`<button class="vote-b" onClick=${() => { const i = targeting; setTargeting(null); onAction(i, p.id); }}><span class="ava">${p.avatar}</span>${p.name}</button>`)}</div>
       <button class="btn ghost" onClick=${() => setTargeting(null)}>${t('cancel')}</button>
     <//>`}
+  </div>`;
+}
+
+/** Short popup at the start of each round. Tap anywhere to close; shown once per round per tab. */
+function RoundIntro({ s, me }) {
+  const { t } = useT();
+  const key = `bunker:intro:${s.code}`;
+  const [seen, setSeen] = useState(() => { try { return +sessionStorage.getItem(key) || 0; } catch { return 0; } });
+  if (s.phase !== 'reveal' || s.round <= seen) return null;
+  const close = () => { setSeen(s.round); try { sessionStorage.setItem(key, String(s.round)); } catch {} };
+  const k = votesNeeded(s);
+  const secs = discussionSec(s.speed, s.round, alive(s).length);
+  const time = secs >= 60 ? `${Math.round(secs / 60)} ${t('min')}` : `${secs} ${t('sec')}`;
+  const body = s.round === 1 ? t('ri_1', { k }) : s.round === 2 && s.board.length ? t('ri_2') : k > 1 ? t('ri_n2', { k }) : t('ri_n');
+  const last = s.round >= totalRounds(s);
+  return html`<div class="intro" onClick=${close}>
+    <div class="intro-b panel" onClick=${(e) => { e.stopPropagation(); close(); }}>
+      <div class="intro-h"><span>${t('round')} ${s.round} ${t('of')} ${totalRounds(s)}</span><button class="x" aria-label=${t('close')}>✕</button></div>
+      ${last && html`<div class="intro-last">☢ ${t('ri_last')}</div>`}
+      <p class="intro-t">${body}</p>
+      <p class="intro-m">⏱ ${t('ri_time', { t: time })}${me && !me.alive ? ' · ' + t('spectator') : ''}</p>
+      <div class="intro-tap">${t('got_it')}</div>
+    </div>
   </div>`;
 }

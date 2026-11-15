@@ -1,6 +1,6 @@
 import { html, useState } from '../lib.js';
 import { useT } from '../i18n.js';
-import { roomCode, uid } from '../engine.js';
+import { roomCode, uid, hashKey } from '../engine.js';
 import { transport, hostKey } from '../transport.js';
 import { ADMIN_PASS_SHA256 } from '../config.js';
 import { Brand, UiLang, ModeNote } from '../ui.js';
@@ -24,7 +24,7 @@ export function Home() {
     const key = uid() + uid();
     for (let i = 0; i < 5; i++) {
       const c = roomCode();
-      try { await transport.create(c, { ...opts, hostKey: key }); hostKey.set(c, key); return c; } catch (e) { console.warn(e); }
+      try { await transport.create(c, { ...opts, hostHash: hashKey(key) }); hostKey.set(c, key); return c; } catch (e) { console.warn(e); }
     }
     throw new Error('create failed');
   };

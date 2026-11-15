@@ -3,11 +3,11 @@
 import { html, useEffect, useRef, useState } from '../lib.js';
 import { useT } from '../i18n.js';
 import { CATS } from '../content.js';
-import { alive, findP, evaluate, MIN_PLAYERS, MAX_PLAYERS } from '../engine.js';
+import { alive, findP, evaluate, isHost, tiedIds, MIN_PLAYERS, MAX_PLAYERS } from '../engine.js';
 import { useRoom, hostKey } from '../transport.js';
 import {
-  Brand, PhaseBadge, Timer, SeatMeter, TraitCard, CatastrophePanel, BunkerPanel, BlockPanel, LogFeed,
-  PlayerTile, FitGrid, QR, useLanBase, useIdle, hint, primaryLabel, Loading, ModeNote,
+  Brand, PhaseBadge, Timer, SeatMeter, TraitCard, CatastrophePanel, BunkerPanel, BlockPanel, TiePanel, LogFeed,
+  LangSwitch, FitGrid, QR, useLanBase, hint, primaryLabel, Loading, ModeNote, isFresh,
 } from '../ui.js';
 import { AdminPanel, SpeedPicker, useBots } from './admin.js';
 
@@ -23,9 +23,8 @@ export function NotFound() {
 export function Host({ code }) {
   const [s, dispatch] = useRoom(code);
   const { t } = useT();
-  const ctl = !!s && hostKey.get(code) === s.hostKey;
+  const ctl = isHost(s, hostKey.get(code));
   const [panel, setPanel] = useState(false);
-  const idle = useIdle(3500);
   useBots(s, dispatch, ctl);
 
   useEffect(() => {
@@ -72,7 +71,7 @@ export function Host({ code }) {
       : html`<${Board} s=${s} />`}
     ${s.phase === 'results' && html`<${Results} s=${s} dispatch=${dispatch} host=${ctl} />`}
 
-    ${ctl && html`<div class=${'dock' + (idle && !panel ? ' idle' : '')}>
+    ${ctl && html`<div class=${'dock dock-' + s.phase}>
       <button class="btn dock-gear" title=${t('admin_panel')} onClick=${() => setPanel(true)}>⚙</button>
       ${s.phase !== 'final' && s.phase !== 'lobby' && html`<button class="btn primary" disabled=${nextDisabled}
         onClick=${() => dispatch({ type: 'next' })} title=${t('keys_hint')}>${primaryLabel(s, t)} ▶</button>`}
@@ -113,9 +112,18 @@ function Lobby({ s, dispatch, ctl }) {
         <p class="dim">${t('est_note', { n: Math.max(s.players.length, MIN_PLAYERS) })}</p>
       </div>
 
+      ${ctl && html`<div class="panel lobby-set">
+        <div class="panel-h"><span>${t('sec_lobby')}</span></div>
+        <div class="lobby-set-row">
+          <div class="lobby-set-g"><small>${t('bots')}</small>
+            <div class="row"><button class="btn ghost" onClick=${() => dispatch({ type: 'addBots', n: 1 })}>${t('add_bot')}</button>
+            <button class="btn ghost" onClick=${() => dispatch({ type: 'addBots', n: 5 })}>${t('add_bots5')}</button></div></div>
+          <div class="lobby-set-g"><small>${t('trait_lang')}</small>
+            <${LangSwitch} value=${s.traitLang} onChange=${(l) => dispatch({ type: 'settings', traitLang: l })} /></div>
+          <label class="check lobby-set-g"><input type="checkbox" checked=${s.mature} onChange=${(e) => dispatch({ type: 'settings', mature: e.target.checked })} /> ${t('mature')}</label>
+        </div>
+      </div>`}
       ${ctl && html`<div class="lobby-ctl">
-        <button class="btn ghost" onClick=${() => dispatch({ type: 'addBots', n: 1 })}>${t('add_bot')}</button>
-        <button class="btn ghost" onClick=${() => dispatch({ type: 'addBots', n: 5 })}>${t('add_bots5')}</button>
         <div class="grow"></div>
         <button class="btn primary big" disabled=${s.players.length < MIN_PLAYERS} onClick=${() => dispatch({ type: 'start' })}>${t('start')} ▶</button>
       </div>`}
@@ -134,6 +142,7 @@ function Board({ s }) {
       <${CatastrophePanel} s=${s} />
       <${BunkerPanel} s=${s} />
       <${BlockPanel} s=${s} />
+      <${TiePanel} s=${s} />
       <${LogFeed} s=${s} max=${6} />
     </aside>
     <section class="board-main">
@@ -160,14 +169,15 @@ export function TvTile({ s, p }) {
   const h = 3.5 + rows * 3.75 + (hid.length ? 0.45 + Math.ceil(hid.length / 4) * 1.1 : 0);
   const done = (s.phase === 'voting' && s.votes[p.id]) || (s.phase === 'reveal' && s.revealed.includes(p.id));
   const onBlock = p.alive && s.round <= 2 && s.board.includes(p.id);
-  return html`<div class=${'ptile tvtile' + (onBlock ? ' onblock' : '')} style=${`--h:${h}`}>
+  const onTie = tiedIds(s).includes(p.id);
+  return html`<div class=${'ptile tvtile' + (onBlock ? ' onblock' : '') + (onTie ? ' ontie' : '')} style=${`--h:${h}`}>
     <div class="ptile-h">
       <span class="ava">${p.avatar}</span>
       <span class="pname">${p.name}</span>
-      ${onBlock && html`<span class="chip red">${t('board')}</span>`}
+      ${onTie ? html`<span class="chip tie">${t('tie_chip')}</span>` : onBlock && html`<span class="chip red">${t('board')}</span>`}
       ${done && html`<span class="chip">✓</span>`}
     </div>
-    <div class="tv-open">${open.map((c) => html`<${TraitCard} cat=${c} card=${p.cards[c]} lang=${s.traitLang} compact />`)}</div>
+    <div class="tv-open">${open.map((c) => html`<${TraitCard} cat=${c} card=${p.cards[c]} lang=${s.traitLang} compact fresh=${isFresh(s, p.cards[c])} />`)}</div>
     ${hid.length > 0 && html`<div class="tv-hidden">${hid.map((c) => html`<span class="tv-chip">${t('cat_' + c)}</span>`)}</div>`}
     ${s.phase === 'final' && html`<div class="stamp ok">${t('survivor')}</div>`}
   </div>`;

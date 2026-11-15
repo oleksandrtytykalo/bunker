@@ -169,3 +169,20 @@ html.tv .fx-vignette { background: radial-gradient(ellipse at center, transparen
 }
 
 @media (min-width: 1000px) { .tv .res-chip { font-size: 1.1rem; padding: .45rem .8rem; } }
+
+/* v3: dock bottom-left, aligned with the side column */
+@media (min-width: 1000px) {
+  .tv .dock { left: 1.2rem; right: auto; bottom: 1rem; width: clamp(260px, 23vw, 1100px); }
+  .tv .dock.dock-lobby, .tv .dock.dock-final { width: auto; }
+  .tv .board-side { padding-bottom: 4.6rem; }
+  .tv .final .verdict { padding-bottom: 5rem; }
+  .tv .lobby-join { padding-bottom: 5rem; }
+  .tv .lobby-set-row { gap: 1rem 1.6rem; }
+  .tv .lobby-set-g small { font-size: .7rem; }
+  .tv .lobby-set .btn { font-size: 1rem; min-height: 2.8rem; padding: .6rem 1.1rem; }
+  .tv .lobby-set .lang-b { font-size: .95rem; padding: .55rem .8rem; }
+  .tv .lobby-set .check { font-size: 1rem; }
+  .tv .lobby-set .check input { width: 1.2rem; height: 1.2rem; }
+  .tv .cell .chip.tie { font-size: .62em; }
+  .tv .tie-panel .block-p { font-size: 1.1rem; }
+}

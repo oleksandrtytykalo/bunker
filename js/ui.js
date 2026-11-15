@@ -2,7 +2,7 @@
 import { html, useEffect, useState, useRef } from './lib.js';
 import { useT } from './i18n.js';
 import { CATS } from './content.js';
-import { cardText, catastropheOf, roomOf, actionOf, findP, alive, totalRounds } from './engine.js';
+import { cardText, catastropheOf, roomOf, actionOf, findP, alive, totalRounds, tiedIds } from './engine.js';
 import { useNow, transport } from './transport.js';
 
 export function LangSwitch({ value, onChange, label }) {
@@ -60,12 +60,15 @@ export function SeatMeter({ s }) {
   </div>`;
 }
 
-export function TraitCard({ cat, card, lang, hidden, onClick, can, compact }) {
+/** revealed during the current round → highlighted */
+export const isFresh = (s, card) => !!(card && card.revealed && card.rr && card.rr === s.round && !['final', 'lobby', 'briefing'].includes(s.phase));
+
+export function TraitCard({ cat, card, lang, hidden, onClick, can, compact, fresh }) {
   const { t } = useT();
   // hidden === false → owner's own view: text visible even before reveal
   const open = !!(card && card.revealed);
   const visible = !!card && (open || hidden === false);
-  const cls = 'tcard' + (open ? ' open' : '') + (visible && !open ? ' priv' : '') + (can ? ' can' : '') + (compact ? ' cmp' : '');
+  const cls = 'tcard' + (open ? ' open' : '') + (open && fresh ? ' fresh' : '') + (visible && !open ? ' priv' : '') + (can ? ' can' : '') + (compact ? ' cmp' : '');
   return html`<div class=${cls} onClick=${onClick}>
     <div class="tcard-cat">${t('cat_' + cat)}${can ? html`<span class="tcard-tap">▶</span>` : ''}${open && hidden === false ? html`<span class="tcard-badge">✔ ${t('opened')}</span>` : ''}</div>
     <div class="tcard-v">${visible ? cardText(cat, card, lang) : html`<span class="redact">${t('classified')}</span>`}</div>
@@ -108,10 +111,21 @@ export function BunkerPanel({ s }) {
 export function BlockPanel({ s }) {
   const { t } = useT();
   const ids = s.board.filter((id) => findP(s, id)?.alive);
-  if (!ids.length || s.round > 2) return null;
+  if (!ids.length || s.round > 2 || tiedIds(s).length) return null; // the tie panel takes over
   return html`<section class="panel block-panel">
     <div class="panel-h"><span>☒ ${t('board')}</span><span>${ids.length}</span></div>
     <div class="block-list">${ids.map((id) => { const p = findP(s, id); return html`<span class="block-p"><span class="ava">${p.avatar}</span>${p.name}</span>`; })}</div>
+  </section>`;
+}
+
+/** players tied in a revote / waiting for the host's decision */
+export function TiePanel({ s }) {
+  const { t } = useT();
+  const ids = tiedIds(s);
+  if (!ids.length) return null;
+  return html`<section class="panel tie-panel">
+    <div class="panel-h"><span>⚖ ${t('tie_chip')}</span><span>${ids.length}</span></div>
+    <div class="block-list">${ids.map((id) => { const p = findP(s, id); return p && html`<span class="block-p tie"><span class="ava">${p.avatar}</span>${p.name}</span>`; })}</div>
   </section>`;
 }
 
@@ -138,16 +152,17 @@ export function PlayerTile({ s, p, me }) {
   const { t } = useT();
   const done = (s.phase === 'voting' && s.votes[p.id]) || (s.phase === 'reveal' && s.revealed.includes(p.id));
   const onBlock = p.alive && s.round <= 2 && s.board.includes(p.id);
-  const cls = 'ptile' + (p.alive ? '' : ' dead') + (p.left ? ' left' : '') + (me ? ' me' : '') + (onBlock ? ' onblock' : '');
+  const onTie = tiedIds(s).includes(p.id);
+  const cls = 'ptile' + (p.alive ? '' : ' dead') + (p.left ? ' left' : '') + (me ? ' me' : '') + (onBlock ? ' onblock' : '') + (onTie ? ' ontie' : '');
   return html`<div class=${cls}>
     <div class="ptile-h">
       <span class="ava">${p.avatar}</span>
       <span class="pname">${p.name}${me ? html` <em>(${t('you')})</em>` : ''}</span>
-      ${onBlock && html`<span class="chip red">${t('board')}</span>`}
+      ${onTie ? html`<span class="chip tie">${t('tie_chip')}</span>` : onBlock && html`<span class="chip red">${t('board')}</span>`}
       ${done && html`<span class="chip">✓</span>`}
     </div>
     <div class="ptile-cards">
-      ${CATS.map((c) => html`<${TraitCard} cat=${c} card=${p.cards[c]} lang=${s.traitLang} compact />`)}
+      ${CATS.map((c) => html`<${TraitCard} cat=${c} card=${p.cards[c]} lang=${s.traitLang} compact fresh=${isFresh(s, p.cards[c])} />`)}
     </div>
     ${p.left ? html`<div class="stamp gray">${t('left')}</div>`
       : !p.alive ? html`<div class="stamp">${t('exiled')}</div>`

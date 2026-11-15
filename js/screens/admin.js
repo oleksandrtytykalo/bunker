@@ -1,14 +1,12 @@
 // Admin panel — every host command lives here.
-// Shown as a drawer on the TV (⚙) or full-screen on a phone via #/admin/CODE/KEY.
+// Shown as a drawer on the TV (⚙). Phone remote control was removed: a visible key on a big screen = anyone is admin.
 import { html, useEffect } from '../lib.js';
 import { useT } from '../i18n.js';
 import { CATS } from '../content.js';
 import { alive, findP, estimate, SPEEDS, MIN_PLAYERS } from '../engine.js';
-import { useRoom, hostKey } from '../transport.js';
 import {
-  Brand, UiLang, LangSwitch, PhaseBadge, Timer, QR, ConfirmButton, Loading, useLanBase, hint, primaryLabel,
+  LangSwitch, PhaseBadge, Timer, ConfirmButton, hint, primaryLabel,
 } from '../ui.js';
-import { NotFound } from './host.js';
 
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
 
@@ -52,12 +50,10 @@ export function SpeedPicker({ s, dispatch, big }) {
   </div>`;
 }
 
-export function AdminPanel({ s, dispatch, onClose, remote }) {
+export function AdminPanel({ s, dispatch, onClose }) {
   const { t, lang, setLang } = useT();
-  const base = useLanBase();
   const a = alive(s);
   const n = s.players.filter((p) => !p.left).length;
-  const remoteUrl = `${base}#/admin/${s.code}/${s.hostKey}`;
   const progress = s.phase === 'reveal' ? `${t('revealed_n')}: ${s.revealed.length}/${a.length}`
     : s.phase === 'voting' ? `${t('voted')}: ${Object.keys(s.votes).length}/${a.length}` : '';
   const nextDisabled = (s.phase === 'results' && s.tie.length > 0) || s.phase === 'final'
@@ -103,14 +99,6 @@ export function AdminPanel({ s, dispatch, onClose, remote }) {
       </div>
     </section>
 
-    ${s.phase === 'lobby' && html`<section class="adm-sec">
-      <h3>${t('sec_lobby')}</h3>
-      <div class="adm-row">
-        <button class="btn sm" onClick=${() => dispatch({ type: 'addBots', n: 1 })}>${t('add_bot')}</button>
-        <button class="btn sm" onClick=${() => dispatch({ type: 'addBots', n: 5 })}>${t('add_bots5')}</button>
-      </div>
-      <label class="check"><input type="checkbox" checked=${s.mature} onChange=${(e) => dispatch({ type: 'settings', mature: e.target.checked })} /> ${t('mature')}</label>
-    </section>`}
 
     <section class="adm-sec">
       <h3>${t('sec_players')} · ${a.length}/${n}</h3>
@@ -131,10 +119,6 @@ export function AdminPanel({ s, dispatch, onClose, remote }) {
       ${s.phase !== 'lobby' && html`<p class="dim">${t('remove_note')}</p>`}
     </section>
 
-    ${!remote && html`<section class="adm-sec">
-      <h3>${t('sec_remote')}</h3>
-      <div class="adm-remote"><${QR} text=${remoteUrl} size="140px" /><p class="dim">${t('remote_d')}</p></div>
-    </section>`}
 
     <section class="adm-sec">
       <h3>${t('sec_service')}</h3>
@@ -145,19 +129,4 @@ export function AdminPanel({ s, dispatch, onClose, remote }) {
       </div>
     </section>
   </div>`;
-}
-
-/** #/admin/CODE/KEY — remote control on a phone */
-export function AdminScreen({ code, keyParam }) {
-  const [s, dispatch] = useRoom(code);
-  const { t } = useT();
-  const ok = s && (keyParam === s.hostKey || hostKey.get(code) === s.hostKey);
-  useEffect(() => { if (ok) hostKey.set(code, s.hostKey); }, [ok]);
-  useBots(s, dispatch, !!ok);
-  if (s === undefined) return html`<${Loading} />`;
-  if (!s || !ok) return html`<${NotFound} />`;
-  return html`<main class="phone admin-screen">
-    <header class="phone-h"><${Brand} small /><span class="grow"></span><${UiLang} /></header>
-    <div class="pad"><${AdminPanel} s=${s} dispatch=${dispatch} remote /></div>
-  </main>`;
 }
