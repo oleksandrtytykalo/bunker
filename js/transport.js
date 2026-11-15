@@ -39,9 +39,9 @@ class LocalTransport {
   }
   async load(code) { return this.read(code); }
   async exists(code) { return !!this.read(code); }
-  async create(code) {
+  async create(code, opts) {
     if (this.read(code)) throw new Error('exists');
-    const s = newGame(code); localStorage.setItem(this.key(code), JSON.stringify(s)); return s;
+    const s = newGame(code, opts); localStorage.setItem(this.key(code), JSON.stringify(s)); return s;
   }
   async dispatch(code, action) {
     const cur = this.read(code); if (!cur) return;
@@ -76,9 +76,9 @@ class SupabaseTransport {
   }
   async load(code) { const s = await this.row(code); if (s) this.apply(code, s); return s; }
   async exists(code) { return !!(await this.row(code)); }
-  async create(code) {
+  async create(code, opts) {
     await this.ready;
-    const s = newGame(code);
+    const s = newGame(code, opts);
     const { error } = await this.sb.from('rooms').insert({ code, state: s, version: s.version });
     if (error) throw error;
     this.cache.set(code, s);
@@ -174,3 +174,10 @@ export function useNow(ms = 500) {
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), ms); return () => clearInterval(t); }, [ms]);
   return now;
 }
+
+// ── host key: proves this device may control a room ──────────
+const HK = (code) => `bunker:hostkey:${code}`;
+export const hostKey = {
+  get(code) { try { return localStorage.getItem(HK(code)); } catch { return null; } },
+  set(code, key) { try { localStorage.setItem(HK(code), key); } catch {} },
+};

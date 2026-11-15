@@ -1,0 +1,171 @@
+/* ─────────────────────────────────────────────────────────────
+   TV / projector mode (html.tv is set by the host screen).
+   Everything is sized in rem, and the root font follows the
+   viewport width, so a 4K projector and a 13" laptop show the
+   same layout, just at a different scale. The player grid picks its own
+   columns × rows (FitGrid) and tiles scale their text with
+   container-query units.
+   ───────────────────────────────────────────────────────────── */
+html.tv {
+  font-size: clamp(12px, 0.92vw, 44px);
+  /* projectors wash out dark UIs: lift text and lines */
+  --text: #f3ecd2;
+  --dim: #bdb79d;
+  --line: #4e5944;
+  --line2: #6f7c5d;
+  --panel: rgba(31, 36, 26, .97);
+}
+html.tv .fx-scan { opacity: .3; }
+html.tv .fx-noise { opacity: .03; }
+html.tv .fx-vignette { background: radial-gradient(ellipse at center, transparent 70%, rgba(0,0,0,.45) 100%); }
+
+@media (min-width: 1000px) {
+  html.tv body { overflow: hidden; }
+  .tv .host { height: 100vh; min-height: 0; overflow: hidden; }
+
+  /* header */
+  .tv .host-h { gap: 1.4rem; padding: .7rem 1.4rem; }
+  .tv .host-h .brand.sm .brand-t { font-size: 1.7rem; }
+  .tv .host-h .brand.sm .brand-ico { font-size: 1.5rem; }
+  .tv .host-h .room-code { padding: .35rem .8rem; }
+  .tv .host-h .room-code small { font-size: .6rem; }
+  .tv .host-h .room-code b { font-size: 1.7rem; }
+  .tv .host-h .phase { font-size: 1.2rem; gap: .6rem; }
+  .tv .host-h .phase .dot { width: .7rem; height: .7rem; }
+  .tv .host-h .chip { font-size: .8rem; padding: .3rem .55rem; }
+  .tv .host-h .timer.big { font-size: 3.2rem; }
+  .tv .host-h .meter { min-width: 20rem; gap: .3rem; }
+  .tv .host-h .meter-lbl { font-size: .85rem; }
+  .tv .host-h .meter-lbl b { font-size: 1.2rem; }
+  .tv .host-h .meter-bar { height: 1rem; gap: .2rem; }
+
+  /* shared panels inside the TV screens */
+  .tv :is(.board, .lobby, .final) .panel { padding: .9rem 1.1rem; }
+  .tv :is(.board, .lobby, .final, .results) .panel-h { font-size: .9rem; padding: 0 0 .6rem 1.1rem; margin-bottom: .8rem; }
+  .tv :is(.board, .final) .cat-title { font-size: 2.1rem; }
+  .tv :is(.board, .final) .cat-desc { font-size: 1.05rem; line-height: 1.45; }
+  .tv :is(.board, .final) .stats { gap: .4rem; margin-bottom: .7rem; }
+  .tv :is(.board, .final) .stats div { padding: .5rem .6rem; }
+  .tv :is(.board, .final) .stats small { font-size: .7rem; }
+  .tv :is(.board, .final) .stats b { font-size: 1.45rem; }
+  .tv :is(.board, .final) .room { font-size: .85rem; padding: .5rem .7rem; }
+  .tv :is(.board, .final) .room.open { font-size: 1.05rem; }
+  .tv :is(.board, .final) .room-n { font-size: .9rem; }
+
+  /* board */
+  .tv .board { grid-template-columns: clamp(260px, 23vw, 1100px) minmax(0, 1fr); gap: 1rem; padding: 1rem 1.2rem; flex: 1; min-height: 0; }
+  .tv .board-side { gap: .8rem; align-content: start; min-height: 0; overflow: hidden; }
+  .tv .board-main { min-height: 0; gap: .8rem; }
+  .tv .log { font-size: .9rem; padding: .7rem .9rem; max-height: none; }
+  .tv .log-h { font-size: .75rem; }
+  .tv .block-list { gap: .4rem; }
+  .tv .block-p { font-size: 1.1rem; padding: .3rem .6rem .3rem .3rem; gap: .5rem; }
+  .tv .block-p .ava { width: 1.8rem; height: 1.8rem; font-size: 1rem; }
+  .tv .hint-bar { padding: .7rem 1.2rem; gap: 1rem; }
+  .tv .hint-bar .hint { font-size: 1.5rem; }
+  .tv .hint-bar .progress { font-size: 1.2rem; }
+  .tv .hint-bar.voting { border-color: var(--red); background: linear-gradient(90deg, rgba(210,64,42,.22), transparent); }
+
+  /* fit-to-screen player grid */
+  .tv .fitgrid {
+    flex: 1; min-height: 0; gap: .7rem; align-content: stretch;
+    grid-template-columns: repeat(var(--cols, 4), minmax(0, 1fr));
+    grid-template-rows: repeat(var(--rows, 4), minmax(0, 1fr));
+  }
+  .tv .cell { container-type: size; min-width: 0; min-height: 0; }
+  .tv .cell > .ptile {
+    height: 100%; animation: none;
+    font-size: clamp(9px, min(4.3cqw, 5.6cqh), 72px);
+    padding: .55em .6em; gap: .45em; grid-template-rows: auto minmax(0, 1fr);
+  }
+  .tv .cell .ptile-h { gap: .5em; }
+  .tv .cell .ava { width: 1.9em; height: 1.9em; font-size: 1em; }
+  .tv .cell .pname { font-size: 1.3em; }
+  .tv .cell .chip { font-size: .62em; padding: .3em .45em; }
+  .tv .cell .ptile-cards { grid-template-rows: repeat(4, minmax(0, 1fr)); gap: .3em; min-height: 0; }
+  .tv .cell .tcard { min-height: 0; padding: .3em .5em; gap: .12em; overflow: hidden; }
+  .tv .cell .tcard-cat { font-size: .6em; letter-spacing: .14em; }
+  .tv .cell .tcard-v {
+    font: 500 1em/1.12 var(--hd); letter-spacing: .02em;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  /* hidden cards: quiet hatched slot instead of "CLASSIFIED" noise */
+  .tv .cell .tcard:not(.open) { background: repeating-linear-gradient(-45deg, #191d14 0 .4em, #13160f .4em .8em); border-left-color: var(--line); }
+  .tv .cell .tcard:not(.open) .tcard-v { visibility: hidden; }
+  .tv .cell .tcard:not(.open) .tcard-cat { color: #7e7a64; }
+  .tv .cell .stamp { font-size: 1.2em; top: .45em; right: .5em; padding: .12em .5em; border-width: .14em; }
+
+  /* lobby */
+  .tv .lobby { grid-template-columns: minmax(0, .9fr) minmax(0, 1.6fr); gap: 1.2rem; padding: 1.2rem; flex: 1; min-height: 0; }
+  .tv .lobby-join { align-content: center; gap: 1rem; }
+  .tv .lobby .qr { padding: .8rem; }
+  .tv .big-code { font-size: 6.5rem; }
+  .tv .lobby .url { font-size: 1.05rem; }
+  .tv .lobby .note { font-size: .9rem; max-width: none; }
+  .tv .lobby-main { display: flex; flex-direction: column; gap: 1rem; min-height: 0; }
+  .tv .lobby-list { flex: 1; min-height: 0; overflow: hidden; display: block; }
+  .tv .lobby-list .dim { font-size: 1.2rem; }
+  .tv .roster { grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: .6rem; }
+  .tv .roster li { padding: .55rem .8rem; gap: .8rem; }
+  .tv .roster .ava { width: 2.4rem; height: 2.4rem; font-size: 1.3rem; }
+  .tv .roster .pname { font-size: 1.45rem; }
+  .tv .roster .chip { font-size: .75rem; padding: .25rem .45rem; }
+  .tv .lobby .dim { font-size: .95rem; }
+  .tv .lobby-ctl { gap: .8rem; }
+  .tv .lobby-ctl .btn { font-size: 1.1rem; padding: .9rem 1.4rem; min-height: 3.2rem; }
+  .tv .lobby-ctl .btn.big { font-size: 1.5rem; padding: 1.1rem 2.6rem; min-height: 4rem; }
+  .tv .speeds.big { gap: .8rem; }
+  .tv .speeds.big .speed { padding: 1rem 1.2rem; gap: .45rem; }
+  .tv .speeds.big .speed-t { font-size: 1.15rem; }
+  .tv .speeds.big .speed-m { font-size: 2.4rem; }
+  .tv .speeds.big .speed-d { font-size: .95rem; }
+
+  /* results overlay */
+  .tv .results { width: min(82vw, 120rem); gap: 1.2rem; padding: 1.6rem 2rem; max-height: 92vh; overflow: auto; }
+  .tv .res-h { font-size: 1.5rem; }
+  .tv .res-list { gap: 1.6rem; }
+  .tv .res-one { gap: .8rem; flex-basis: 30rem; max-width: 60rem; }
+  .tv .res-who { font-size: 2.6rem; gap: 1rem; }
+  .tv .res-who .ava.xl { width: 4.5rem; height: 4.5rem; font-size: 2.4rem; }
+  .tv .res-cards { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .5rem; }
+  .tv .results.multi .res-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tv .res-cards .tcard { padding: .45rem .6rem; }
+  .tv .res-cards .tcard-cat { font-size: .7rem; }
+  .tv .res-cards .tcard-v { font: 500 1.1rem/1.2 var(--hd); }
+  .tv .stamp.big { font-size: 3rem; }
+  .tv .tally { gap: .35rem; }
+  .tv .tally-r { font-size: 1.1rem; grid-template-columns: minmax(8rem, 16rem) 1fr 2.5rem; gap: .8rem; }
+  .tv .tally-bar { height: .9rem; }
+  .tv .tie-btns .btn, .tv .results .btn { font-size: 1.2rem; min-height: 3.2rem; }
+  .tv .results .btn.big { font-size: 1.4rem; padding: 1rem 2rem; justify-self: center; }
+
+  /* final */
+  .tv .final { grid-template-columns: clamp(300px, 28vw, 1200px) minmax(0, 1fr); padding: 1rem 1.2rem; gap: 1rem; flex: 1; min-height: 0; }
+  .tv .verdict { overflow: auto; gap: .8rem; }
+  .tv .verdict h2 { font-size: 2.1rem; }
+  .tv .checks li { font-size: 1.05rem; padding: .45rem .7rem; gap: .7rem; }
+  .tv .final-surv { display: flex; flex-direction: column; min-height: 0; }
+
+  /* dock */
+  .tv .dock { right: 1.2rem; bottom: 1.2rem; gap: .7rem; }
+  .tv .dock .btn { font-size: 1.15rem; min-height: 3.3rem; padding: .8rem 1.4rem; }
+  .tv .dock .dock-gear { font-size: 1.6rem; padding: .6rem 1.1rem; }
+}
+
+@media (min-width: 1000px) {
+  .tv .cell > .tvtile {
+    display: flex; flex-direction: column;
+    font-size: clamp(9px, min(6.8cqw, calc(100cqh / var(--h, 18))), 96px);
+  }
+  .tv .cell .tv-open { gap: .3em; }
+  .tv .cell .tv-open .tcard { padding: .35em .5em; }
+  .tv .cell .tv-hidden { gap: .25em; }
+  .tv .cell .tv-chip { font-size: .52em; padding: .4em .55em; }
+  .tv .cell > .tvtile .stamp { font-size: 1.1em; }
+  .tv .out-strip { gap: .5rem; padding: .2rem 0 0; }
+  .tv .out-l { font-size: .85rem; }
+  .tv .out-chip { font-size: 1.05rem; padding: .25rem .6rem .25rem .25rem; gap: .5rem; }
+  .tv .out-chip .ava { width: 1.6rem; height: 1.6rem; font-size: .9rem; }
+}
+
+@media (min-width: 1000px) { .tv .res-chip { font-size: 1.1rem; padding: .45rem .8rem; } }

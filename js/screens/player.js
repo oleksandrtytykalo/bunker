@@ -3,7 +3,7 @@ import { useT } from '../i18n.js';
 import { CATS, AVATARS } from '../content.js';
 import { alive, findP, canReveal, actionOf, uid } from '../engine.js';
 import { useRoom } from '../transport.js';
-import { Brand, UiLang, PhaseBadge, Timer, TraitCard, CatastrophePanel, BunkerPanel, LogFeed, PlayerTile, SeatMeter, Modal, hint, Loading, ModeNote } from '../ui.js';
+import { Brand, UiLang, PhaseBadge, Timer, TraitCard, CatastrophePanel, BunkerPanel, LogFeed, PlayerTile, SeatMeter, BlockPanel, Modal, hint, Loading, ModeNote } from '../ui.js';
 import { NotFound, Results, Final } from './host.js';
 
 const PID = (code) => `bunker:pid:${code}`;
@@ -99,12 +99,13 @@ function InGame({ s, me, dispatch }) {
       <div class="status-r"><${PhaseBadge} s=${s} />${s.phase === 'discussion' && html`<${Timer} end=${s.timerEnd} />`}</div>
       <div class="hint">${hint(s, t)}</div>
       ${me && s.phase === 'reveal' && me.alive && s.revealed.includes(me.id) && html`<div class="dim">✓ ${t('already_revealed')}</div>`}
+      <${BlockPanel} s=${s} />
     </div>
 
     ${me && !me.alive && html`<div class="panel dead-banner"><b>${t('dead_title')}</b><span>${t('dead_d')}</span></div>`}
 
     ${voting && html`<section class="panel vote">
-      <div class="panel-h"><span>☒ ${t('vote_for')}</span>${myVote && html`<span>${t('your_vote')}: ${findP(s, myVote)?.name}</span>`}</div>
+      <div class="panel-h"><span>☒ ${t(s.round === 1 ? 'nominate' : 'vote_for')}</span>${myVote && html`<span>${t('your_vote')}: ${findP(s, myVote)?.name}</span>`}</div>
       <div class="vote-list">${s.candidates.filter((id) => id !== me.id).map((id) => {
         const p = findP(s, id);
         return html`<button class=${'vote-b' + (myVote === id ? ' on' : '')} onClick=${() => setConfirm({ kind: 'vote', id, name: p.name })}>

@@ -1,34 +1,48 @@
 import { html, useState } from '../lib.js';
 import { useT } from '../i18n.js';
-import { roomCode } from '../engine.js';
-import { transport } from '../transport.js';
+import { roomCode, uid } from '../engine.js';
+import { transport, hostKey } from '../transport.js';
+import { ADMIN_PASS_SHA256 } from '../config.js';
 import { Brand, UiLang, ModeNote } from '../ui.js';
+
+async function sha256(text) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
 
 export function Home() {
   const { t } = useT();
   const [code, setCode] = useState('');
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(false);
+  const [pass, setPass] = useState('');
+  const [passErr, setPassErr] = useState('');
 
-  // retry on the (rare) room-code collision
-  const createRoom = async () => {
+  // create a room (retry on the rare code collision) and remember this device as its host
+  const createRoom = async (opts = {}) => {
+    const key = uid() + uid();
     for (let i = 0; i < 5; i++) {
       const c = roomCode();
-      try { await transport.create(c); return c; } catch (e) { console.warn(e); }
+      try { await transport.create(c, { ...opts, hostKey: key }); hostKey.set(c, key); return c; } catch (e) { console.warn(e); }
     }
     throw new Error('create failed');
   };
-  const run = (fn) => async () => {
+  const run = async (fn) => {
     if (busy) return;
     setBusy(true); setErr('');
     try { await fn(); } catch { setErr(t('create_fail')); } finally { setBusy(false); }
   };
-  const host = run(async () => { const c = await createRoom(); location.hash = `#/host/${c}`; });
-  const demo = run(async () => {
-    const c = await createRoom();
-    await transport.dispatch(c, { type: 'addBots', n: 5 });
-    location.hash = `#/sandbox/${c}`;
-  });
+  const host = () => run(async () => { location.hash = `#/host/${await createRoom()}`; });
+
+  const adminHost = async (e) => {
+    e.preventDefault();
+    setPassErr('');
+    if (!globalThis.crypto || !crypto.subtle) { setPassErr(t('no_crypto')); return; }
+    if ((await sha256(pass)) !== ADMIN_PASS_SHA256) { setPassErr(t('admin_wrong')); return; }
+    run(async () => { location.hash = `#/host/${await createRoom({ admin: true })}`; });
+  };
+
   const join = async (e) => {
     e.preventDefault();
     const c = code.trim().toUpperCase();
@@ -56,6 +70,18 @@ export function Home() {
         <span class="mc-d">${t('host_new_d')}</span>
       </button>
 
+      <div class="menu-card admin-card" onClick=${() => !adminOpen && setAdminOpen(true)}>
+        <span class="mc-ico">🛡</span>
+        <span class="mc-t">${t('admin_host')}</span>
+        <span class="mc-d">${t('admin_host_d')}</span>
+        ${adminOpen && html`<form class="join-row" onSubmit=${adminHost}>
+          <input class="input" type="password" autocomplete="current-password" placeholder=${t('admin_pass')} value=${pass}
+            onInput=${(e) => { setPass(e.target.value); setPassErr(''); }} aria-label=${t('admin_pass')} autofocus />
+          <button class="btn" type="submit">${t('enter')}</button>
+        </form>`}
+        ${passErr && html`<div class="err">${passErr}</div>`}
+      </div>
+
       <form class="menu-card join" onSubmit=${join}>
         <span class="mc-ico">📟</span>
         <span class="mc-t">${t('join')}</span>
@@ -67,12 +93,6 @@ export function Home() {
         </div>
         ${err && html`<div class="err">${err}</div>`}
       </form>
-
-      <button class="menu-card" onClick=${demo}>
-        <span class="mc-ico">🧪</span>
-        <span class="mc-t">${t('demo')}</span>
-        <span class="mc-d">${t('demo_d')}</span>
-      </button>
     </div>
 
     <${ModeNote} />
