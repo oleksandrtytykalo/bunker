@@ -496,3 +496,6 @@ html.embedded .fx-scan, html.embedded .fx-noise, html.embedded .fx-vignette { di
 .lobby-set-g { display: grid; gap: 6px; }
 .lobby-set-g small { font: 600 10px/1 var(--hd); letter-spacing: .18em; text-transform: uppercase; color: var(--dim); }
 label.lobby-set-g { display: flex; }
+
+/* settings gear in the host top bar */
+.hdr-gear { font-size: 20px; padding: 6px 12px; min-height: 40px; }

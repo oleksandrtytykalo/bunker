@@ -186,3 +186,8 @@ html.tv .fx-vignette { background: radial-gradient(ellipse at center, transparen
   .tv .cell .chip.tie { font-size: .62em; }
   .tv .tie-panel .block-p { font-size: 1.1rem; }
 }
+
+@media (min-width: 1000px) {
+  .tv .host-h .hdr-gear { font-size: 1.6rem; padding: .35rem .9rem; min-height: 2.8rem; }
+  .tv .lobby-join, .tv .final .verdict { padding-bottom: .9rem; }
+}

@@ -1,4 +1,4 @@
-// TV / projector screen. Pure display + a small auto-hiding dock;
+// TV / projector screen. Display first: ⚙ in the top bar opens the admin panel, Next sits bottom-left.
 // every command lives in the admin panel (drawer here, or a phone).
 import { html, useEffect, useRef, useState } from '../lib.js';
 import { useT } from '../i18n.js';
@@ -64,6 +64,7 @@ export function Host({ code }) {
       <div class="grow"></div>
       ${s.phase === 'discussion' && html`<${Timer} end=${s.timerEnd} big />`}
       ${s.phase !== 'lobby' && html`<${SeatMeter} s=${s} />`}
+      ${ctl && html`<button class="btn ghost hdr-gear" title=${t('admin_panel')} aria-label=${t('admin_panel')} onClick=${() => setPanel(true)}>⚙</button>`}
     </header>
 
     ${s.phase === 'lobby' ? html`<${Lobby} s=${s} dispatch=${dispatch} ctl=${ctl} />`
@@ -71,10 +72,9 @@ export function Host({ code }) {
       : html`<${Board} s=${s} />`}
     ${s.phase === 'results' && html`<${Results} s=${s} dispatch=${dispatch} host=${ctl} />`}
 
-    ${ctl && html`<div class=${'dock dock-' + s.phase}>
-      <button class="btn dock-gear" title=${t('admin_panel')} onClick=${() => setPanel(true)}>⚙</button>
-      ${s.phase !== 'final' && s.phase !== 'lobby' && html`<button class="btn primary" disabled=${nextDisabled}
-        onClick=${() => dispatch({ type: 'next' })} title=${t('keys_hint')}>${primaryLabel(s, t)} ▶</button>`}
+    ${ctl && s.phase !== 'final' && s.phase !== 'lobby' && html`<div class=${'dock dock-' + s.phase}>
+      <button class="btn primary" disabled=${nextDisabled}
+        onClick=${() => dispatch({ type: 'next' })} title=${t('keys_hint')}>${primaryLabel(s, t)} ▶</button>
     </div>`}
 
     ${ctl && panel && html`<div class="drawer-bg" onClick=${(e) => e.target === e.currentTarget && setPanel(false)}>

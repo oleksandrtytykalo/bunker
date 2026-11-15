@@ -27,7 +27,7 @@ No build step and nothing to install: Preact + htm and the fonts load from a CDN
 - **A player leaves mid-game:** the admin removes them and the bunker loses one seat, so the remaining schedule stays the same.
 
 ## Host controls
-- The TV screen is display-first. A dock (⚙ + Next) sits bottom-left under the side column; **Space / →** = next.
+- The TV screen is display-first. ⚙ (admin panel) is in the top bar; Next sits bottom-left under the side column; **Space / →** = next.
 - ⚙ opens the **admin panel**: pace, languages, timer ±30 s / end discussion, tie-breaks, remove player, restart. Lobby settings (bots, trait language, 18+) are on the lobby screen itself.
 - Only the device that created the room can control it: it keeps a random key in localStorage, and the room stores only a hash of it. Phone remote control was removed. (Writes are still open to anyone with the public key; real protection needs server-side rules.)
 - Traits revealed in the current round glow green; tied players pulse amber; phones get a short popup at the start of each round.
