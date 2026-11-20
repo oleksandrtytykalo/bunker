@@ -1,6 +1,6 @@
 // Admin panel — every host command lives here.
-// Shown as a drawer on the TV (⚙), or full-screen on extra admin devices (#/admin/CODE) joined via a
-// single-use, 2-minute invite QR — never a reusable key, so a QR glimpsed on the projector is worthless.
+// Shown as a drawer (⚙) on every host screen. Extra host screens join via a single-use,
+// 2-minute invite (#/admin/CODE/TOKEN) — never a reusable key, so a QR glimpsed on the projector is worthless.
 import { html, useEffect, useState } from '../lib.js';
 import { useT } from '../i18n.js';
 import { CATS } from '../content.js';
@@ -210,7 +210,7 @@ function CoHosts({ s, dispatch }) {
   </section>`;
 }
 
-/** #/admin/CODE[/TOKEN] — an extra admin screen (phone / laptop). */
+/** #/admin/CODE/TOKEN — claims an invite on a new device, then opens the full host screen #/host/CODE. */
 export function AdminScreen({ code, token }) {
   const [s, dispatch] = useRoom(code);
   const { t } = useT();
@@ -225,8 +225,8 @@ export function AdminScreen({ code, token }) {
     dispatch({ type: 'claimAdmin', token, keyHash: hashKey(key) }).then(() => setTimeout(() => setState('done'), 1500));
   }, [s && s.version, ok]);
 
-  // once in, drop the (now used) token from the address bar
-  useEffect(() => { if (ok && token) history.replaceState(null, '', `#/admin/${code}`); }, [ok]);
+  // once in, open the full host screen (board + timer + Next + ⚙); the used token leaves the address bar
+  useEffect(() => { if (ok) location.replace(`#/host/${code}`); }, [ok]);
 
   if (s === undefined) return html`<${Loading} />`;
   if (!s) return html`<${NotFound} />`;
@@ -235,8 +235,5 @@ export function AdminScreen({ code, token }) {
     return html`<main class="center-screen"><${Brand} small /><div class="panel narrow"><p class=${state === 'claiming' ? 'blink' : ''}>${msg}</p>
       <a class="btn ghost" href="#/">${t('home')}</a></div></main>`;
   }
-  return html`<main class="phone admin-screen">
-    <header class="phone-h"><${Brand} small /><span class="grow"></span><${UiLang} /></header>
-    <div class="pad"><${AdminPanel} s=${s} dispatch=${dispatch} /></div>
-  </main>`;
+  return html`<${Loading} />`;
 }
