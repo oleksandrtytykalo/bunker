@@ -31,7 +31,9 @@ No build step and nothing to install: Preact + htm and the fonts load from a CDN
 - ⚙ opens the **admin panel**: pace, languages, timer ±30 s / end discussion, tie-breaks, remove player, restart. Lobby settings (bots, trait language, 18+) are on the lobby screen itself.
 - Only the device that created the room can control it: it keeps a random key in localStorage, and the room stores only a hash of it. Phone remote control was removed. (Writes are still open to anyone with the public key; real protection needs server-side rules.)
 - Traits revealed in the current round glow green; tied players pulse amber; phones get a short popup at the start of each round.
-- **Admin host** (home screen) is password-gated for upcoming experimental features. The password is in `.admin-pass` (not committed); `js/config.js` holds only its SHA-256.
+- **Admin host** (home screen) is password-gated. Admin rooms always play the event scenario **The Red Harvest** (`red_harvest` in `js/content.js`, never drawn in normal games).
+- **New devices:** a player who joins after the start waits in the admin panel's *New devices* list; the host hands them an existing character and the old device loses access.
+  The password is in `.admin-pass` (not committed); `js/config.js` holds only its SHA-256.
 
 ## Backend (Supabase)
 - `supabase/schema.sql` — run once in the SQL editor: `rooms` table (state jsonb + version), RLS policies, realtime, hourly cleanup of rooms idle 2+ days.

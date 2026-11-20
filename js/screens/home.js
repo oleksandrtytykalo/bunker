@@ -96,5 +96,10 @@ export function Home() {
     </div>
 
     <${ModeNote} />
+
+    <footer class="credit">
+      <img src="img/ukr-society.jpg" alt="UoB Ukrainian Society" width="96" height="96" />
+      <span>${t('credit')}</span>
+    </footer>
   </main>`;
 }

@@ -1,7 +1,7 @@
 import { html, useState } from '../lib.js';
 import { useT } from '../i18n.js';
 import { CATS, AVATARS } from '../content.js';
-import { alive, findP, canReveal, actionOf, uid, votesNeeded, discussionSec, totalRounds } from '../engine.js';
+import { alive, findP, playerOf, canReveal, actionOf, uid, votesNeeded, discussionSec, totalRounds } from '../engine.js';
 import { useRoom } from '../transport.js';
 import { Brand, UiLang, PhaseBadge, Timer, TraitCard, CatastrophePanel, BunkerPanel, LogFeed, PlayerTile, SeatMeter, BlockPanel, TiePanel, Modal, hint, Loading, ModeNote, isFresh } from '../ui.js';
 import { NotFound, Results, Final } from './host.js';
@@ -23,17 +23,20 @@ export function Player({ code, fresh }) {
   const { t } = useT();
   if (s === undefined) return html`<${Loading} />`;
   if (!s) return html`<${NotFound} />`;
-  const me = pid && findP(s, pid);
+  const me = playerOf(s, pid);
+  const waitingMe = pid && (s.waiting || []).find((w) => w.id === pid);
 
   if (!me && !spectate) {
-    if (s.phase === 'lobby') {
-      return html`<${JoinForm} s=${s} onJoin=${(name, avatar) => {
-        const id = 'p_' + uid(); setPid(code, id, fresh); setP(id);
-        dispatch({ type: 'join', player: { id, name, avatar } });
-      }} />`;
+    if (waitingMe) {
+      return html`<main class="center-screen"><${Brand} small /><div class="panel narrow">
+        <p class="blink">${t('wait_merge')}</p><p class="dim">${t('wait_merge_d')}</p>
+        <button class="btn ghost" onClick=${() => setSpectate(true)}>${t('watch')}</button></div></main>`;
     }
-    return html`<main class="center-screen"><${Brand} small /><div class="panel narrow">
-      <p>${t('game_started')}</p><button class="btn" onClick=${() => setSpectate(true)}>${t('watch')}</button></div></main>`;
+    const late = s.phase !== 'lobby';
+    return html`<${JoinForm} s=${s} late=${late} onSpectate=${() => setSpectate(true)} onJoin=${(name, avatar) => {
+      const id = 'p_' + uid(); setPid(code, id, fresh); setP(id);
+      dispatch({ type: 'join', player: { id, name, avatar } });
+    }} />`;
   }
 
   return html`<main class="phone">
@@ -49,7 +52,7 @@ export function Player({ code, fresh }) {
   </main>`;
 }
 
-function JoinForm({ s, onJoin }) {
+function JoinForm({ s, onJoin, late, onSpectate }) {
   const { t } = useT();
   const [name, setName] = useState('');
   const [ava, setAva] = useState(AVATARS[Math.floor(Math.random() * AVATARS.length)]);
@@ -64,7 +67,9 @@ function JoinForm({ s, onJoin }) {
       <div class="fld"><span>${t('choose_avatar')}</span>
         <div class="ava-grid">${AVATARS.map((a) => html`<button type="button" class=${'ava-b' + (a === ava ? ' on' : '')} onClick=${() => setAva(a)}>${a}</button>`)}</div>
       </div>
-      <button class="btn primary big" type="submit" disabled=${!name.trim()}>${t('create_char')}</button>
+      ${late && html`<p class="note">${t('late_note')}</p>`}
+      <button class="btn primary big" type="submit" disabled=${!name.trim()}>${t(late ? 'late_join' : 'create_char')}</button>
+      ${late && html`<button type="button" class="btn ghost" onClick=${onSpectate}>${t('watch')}</button>`}
     </form>
   </main>`;
 }

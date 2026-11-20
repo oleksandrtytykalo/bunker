@@ -1,6 +1,6 @@
 // Admin panel — every host command lives here.
 // Shown as a drawer on the TV (⚙). Phone remote control was removed: a visible key on a big screen = anyone is admin.
-import { html, useEffect } from '../lib.js';
+import { html, useEffect, useState } from '../lib.js';
 import { useT } from '../i18n.js';
 import { CATS } from '../content.js';
 import { alive, findP, estimate, SPEEDS, MIN_PLAYERS } from '../engine.js';
@@ -100,6 +100,8 @@ export function AdminPanel({ s, dispatch, onClose }) {
     </section>
 
 
+    <${LateJoiners} s=${s} dispatch=${dispatch} />
+
     <section class="adm-sec">
       <h3>${t('sec_players')} · ${a.length}/${n}</h3>
       <ul class="adm-players">
@@ -129,4 +131,34 @@ export function AdminPanel({ s, dispatch, onClose }) {
       </div>
     </section>
   </div>`;
+}
+
+/** Late joiners (new device mid-game) → hand them an existing character; the old device loses it. */
+function LateJoiners({ s, dispatch }) {
+  const { t } = useT();
+  const list = s.waiting || [];
+  if (!list.length || s.phase === 'lobby') return null;
+  const chars = s.players.filter((p) => !p.left);
+  return html`<section class="adm-sec late">
+    <h3>⇄ ${t('sec_late')} · ${list.length}</h3>
+    <p class="dim">${t('late_d')}</p>
+    <ul class="adm-players">${list.map((w) => html`<${MergeRow} key=${w.id} w=${w} chars=${chars} dispatch=${dispatch} />`)}</ul>
+  </section>`;
+}
+
+function MergeRow({ w, chars, dispatch }) {
+  const { t } = useT();
+  const [into, setInto] = useState('');
+  return html`<li class="merge-row">
+    <span class="ava">${w.avatar}</span>
+    <span class="pname">${w.name}</span>
+    <span class="dim">→</span>
+    <select class="input sm" value=${into} onChange=${(e) => setInto(e.target.value)} aria-label=${t('choose_char')}>
+      <option value="">${t('choose_char')}</option>
+      ${chars.map((p) => html`<option value=${p.id}>${p.avatar} ${p.name}${p.alive ? '' : ' · ' + t('status_out')}${p.bot ? ' · BOT' : ''}</option>`)}
+    </select>
+    <${ConfirmButton} label=${t('merge')} confirmLabel=${t('confirm')} disabled=${!into}
+      onConfirm=${() => dispatch({ type: 'merge', from: w.id, into })} />
+    <button class="x" title=${t('dismiss')} onClick=${() => dispatch({ type: 'dropWaiting', id: w.id })}>✕</button>
+  </li>`;
 }

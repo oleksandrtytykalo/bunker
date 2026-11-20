@@ -80,7 +80,7 @@ export function newGame(code, opts = {}) {
     phase: 'lobby', round: 0,
     traitLang: 'uk', mature: false, speed: 'slow',
     catastrophe: null, bunker: null, seats: 0, schedule: [],
-    players: [], board: [],
+    players: [], board: [], waiting: [],
     votes: {}, candidates: [], k: 0, revote: 0, tie: [], slots: 0, out: [], outKind: null,
     revealed: [], lastTally: null, timerEnd: null,
     log: [],
@@ -116,7 +116,8 @@ function dealAll(s) {
     p.actions = Array.from({ length: ACTIONS_PER_PLAYER }, () => ({ id: actionDeck[ai++ % actionDeck.length], used: false }));
     p.alive = true; p.left = false; p.exiledRound = null; p.immuneRound = null; p.doubleRound = null;
   });
-  const cat = pick(CATASTROPHES);
+  // admin-host (event) rooms always play the event scenario; normal rooms draw at random
+  const cat = s.admin ? CATASTROPHES.find((c) => c.event) : pick(CATASTROPHES.filter((c) => !c.event));
   s.catastrophe = { id: cat.id, months: between(cat.months[0], cat.months[1]) };
   s.bunker = {
     area: between(4, 20) * 10,
@@ -131,6 +132,8 @@ function dealAll(s) {
 // ── helpers ──────────────────────────────────────────────────
 export const alive = (s) => s.players.filter((p) => p.alive);
 export const findP = (s, id) => s.players.find((p) => p.id === id);
+/** the character a device controls (a merged character belongs to its new device only) */
+export const playerOf = (s, pid) => (pid ? s.players.find((p) => (p.ownerId || p.id) === pid) : undefined);
 /** players currently tied (revote or host decision) */
 export const tiedIds = (s) => (s.phase === 'voting' && s.revote ? s.candidates : s.phase === 'results' ? s.tie : []);
 export const totalRounds = (s) => Math.max(s.round, (s.schedule || []).length - 1);
@@ -315,7 +318,18 @@ export function reduce(state, a) {
 function step(s, a) {
   switch (a.type) {
     case 'join': {
-      if (s.phase !== 'lobby' || s.players.length >= MAX_PLAYERS) return false;
+      if (s.phase !== 'lobby') {
+        // late joiner (e.g. a phone glitched): wait until the host merges them into a character
+        s.waiting = s.waiting || [];
+        if (playerOf(s, a.player.id)) return false;
+        const w = s.waiting.find((x) => x.id === a.player.id);
+        if (w) { Object.assign(w, { name: a.player.name.slice(0, 18), avatar: a.player.avatar }); return true; }
+        if (s.waiting.length >= MAX_PLAYERS) return false;
+        s.waiting.push({ id: a.player.id, name: a.player.name.slice(0, 18), avatar: a.player.avatar });
+        log(s, 'waitjoin', { w: a.player.name.slice(0, 18) });
+        return true;
+      }
+      if (s.players.length >= MAX_PLAYERS) return false;
       if (findP(s, a.player.id)) { Object.assign(findP(s, a.player.id), a.player); return true; }
       s.players.push({ id: a.player.id, name: a.player.name.slice(0, 18), avatar: a.player.avatar, bot: !!a.player.bot, cards: {}, actions: [], alive: true });
       log(s, 'join', { a: a.player.id });
@@ -333,6 +347,21 @@ function step(s, a) {
     }
     case 'kick':
     case 'remove': return removePlayer(s, a.id);
+    case 'merge': {
+      // give an existing character to a late joiner's device; the old device loses control
+      const w = (s.waiting || []).find((x) => x.id === a.from);
+      const p = findP(s, a.into);
+      if (!w || !p || p.left) return false;
+      p.ownerId = w.id;
+      s.waiting = s.waiting.filter((x) => x.id !== w.id);
+      log(s, 'merged', { a: p.id, w: w.name });
+      return true;
+    }
+    case 'dropWaiting': {
+      const before = (s.waiting || []).length;
+      s.waiting = (s.waiting || []).filter((x) => x.id !== a.id);
+      return s.waiting.length !== before;
+    }
     case 'settings': {
       if ('traitLang' in a) s.traitLang = a.traitLang;
       if ('speed' in a && SPEEDS[a.speed]) s.speed = a.speed;
@@ -383,7 +412,9 @@ function step(s, a) {
     }
     case 'reset': {
       const keep = s.players.filter((p) => !p.left)
-        .map((p) => ({ id: p.id, name: p.name, avatar: p.avatar, bot: p.bot, cards: {}, actions: [], alive: true }));
+        .map((p) => ({ id: p.id, ownerId: p.ownerId, name: p.name, avatar: p.avatar, bot: p.bot, cards: {}, actions: [], alive: true }))
+        .concat((s.waiting || []).map((w) => ({ id: w.id, name: w.name, avatar: w.avatar, bot: false, cards: {}, actions: [], alive: true })))
+        .slice(0, MAX_PLAYERS);
       Object.assign(s, newGame(s.code, { admin: s.admin, hostHash: s.hostHash }), {
         hostKey: s.hostKey,
         players: keep, traitLang: s.traitLang, mature: s.mature, speed: s.speed, version: s.version,

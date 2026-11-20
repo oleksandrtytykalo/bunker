@@ -279,6 +279,12 @@ export const CATASTROPHES = [
     uk: ['Тотальна бюрократія', 'Кожна дія вимагає печатки, а печатки скінчились. Черги в ЦНАП розтяглися на всю країну. Цивілізація тоне в папірцях.'],
     en: ['Total Bureaucracy', 'Every action requires a stamp, and the stamps have run out. Queues at the service centres stretch across the whole country. Civilisation is drowning in paperwork.'],
   },
+  // Event scenario — used only by "Admin host" rooms (never drawn at random).
+  {
+    id: 'red_harvest', event: true, months: [24, 48], needs: ['food', 'science', 'med'],
+    uk: ['Червоні жнива', 'Червона армія прокотилася землею й забрала кожну комору. Те, чого не змогла вивезти, — отруїла: зерно, криниці, сам чорнозем. Поля обернулися попелом, села замовкли, а голод тепер косить людей замість солдатів. Жменька вцілілих біжить до останнього бункера з надією пережити лихоліття — і колись знову засіяти цю землю.'],
+    en: ['The Red Harvest', 'A red army rolled across the land and claimed every granary. What it could not carry, it poisoned — the grain, the wells, the black earth itself. Fields turned to ash, villages fell silent, and hunger now does the soldiers\' work. A small band of survivors runs for the last bunker, hoping to outlast the famine and one day sow the land again.'],
+  },
 ];
 
 // ─── Bunker rooms (3 are drawn, one revealed per round) ──────
