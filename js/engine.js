@@ -71,7 +71,11 @@ export function hashKey(str = '') {
   return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
 }
 /** does this device's stored key control the room? (old rooms stored the key in clear) */
-export const isHost = (s, key) => !!(s && key && (s.hostHash ? hashKey(key) === s.hostHash : key === s.hostKey));
+export const isHost = (s, key) => !!(s && key && (
+  (s.hostHash ? hashKey(key) === s.hostHash : key === s.hostKey)
+  || (s.admins || []).some((a) => a.hash === hashKey(key))));
+/** single-use admin invites live this long */
+export const INVITE_MS = 2 * 60 * 1000;
 
 export function newGame(code, opts = {}) {
   return {
@@ -81,6 +85,7 @@ export function newGame(code, opts = {}) {
     traitLang: 'uk', mature: false, speed: 'slow',
     catastrophe: null, bunker: null, seats: 0, schedule: [],
     players: [], board: [], waiting: [],
+    admins: [], invite: null,
     votes: {}, candidates: [], k: 0, revote: 0, tie: [], slots: 0, out: [], outKind: null,
     revealed: [], lastTally: null, timerEnd: null,
     log: [],
@@ -357,6 +362,31 @@ function step(s, a) {
       log(s, 'merged', { a: p.id, w: w.name });
       return true;
     }
+    // ── extra admin screens: single-use, short-lived invites (only hashes are stored) ──
+    case 'invite': {
+      s.invite = { hash: a.hash, exp: a.exp, used: false };
+      return true;
+    }
+    case 'cancelInvite': {
+      if (!s.invite) return false;
+      s.invite = null;
+      return true;
+    }
+    case 'claimAdmin': {
+      const inv = s.invite;
+      if (!inv || inv.used || Date.now() > inv.exp || hashKey(a.token) !== inv.hash) return false;
+      s.admins = s.admins || [];
+      const n = s.admins.reduce((m, x) => Math.max(m, x.n), 1) + 1;
+      s.admins.push({ hash: a.keyHash, n, at: Date.now() });
+      inv.used = true;
+      log(s, 'cohost', { n });
+      return true;
+    }
+    case 'revokeAdmin': {
+      const before = (s.admins || []).length;
+      s.admins = (s.admins || []).filter((x) => x.hash !== a.hash);
+      return s.admins.length !== before;
+    }
     case 'dropWaiting': {
       const before = (s.waiting || []).length;
       s.waiting = (s.waiting || []).filter((x) => x.id !== a.id);
@@ -416,7 +446,7 @@ function step(s, a) {
         .concat((s.waiting || []).map((w) => ({ id: w.id, name: w.name, avatar: w.avatar, bot: false, cards: {}, actions: [], alive: true })))
         .slice(0, MAX_PLAYERS);
       Object.assign(s, newGame(s.code, { admin: s.admin, hostHash: s.hostHash }), {
-        hostKey: s.hostKey,
+        hostKey: s.hostKey, admins: s.admins || [],
         players: keep, traitLang: s.traitLang, mature: s.mature, speed: s.speed, version: s.version,
       });
       return true;

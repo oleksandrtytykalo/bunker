@@ -509,3 +509,9 @@ label.lobby-set-g { display: flex; }
 .adm-sec.late { border-left: 3px solid var(--amber); background: rgba(233,162,59,.05); }
 .merge-row { flex-wrap: wrap; }
 .merge-row select { flex: 1 1 140px; margin-left: 0; min-width: 0; }
+
+/* extra admin screens */
+.adm-sec.cohosts { border-left: 3px solid var(--phos); }
+.invite { display: grid; gap: 10px; }
+.invite-qr { display: flex; gap: 14px; align-items: center; }
+.invite-qr .qr { flex: none; padding: 6px; }

@@ -33,6 +33,7 @@ No build step and nothing to install: Preact + htm and the fonts load from a CDN
 - Traits revealed in the current round glow green; tied players pulse amber; phones get a short popup at the start of each round.
 - **Admin host** (home screen) is password-gated. Admin rooms always play the event scenario **The Red Harvest** (`red_harvest` in `js/content.js`, never drawn in normal games).
   The password is in `.admin-pass` (not committed); `js/config.js` holds only its SHA-256.
+- **Extra admin screens:** ⚙ → *Extra admin screens* → *Create invite* makes a single-use link/QR (valid 2 min, one device). The device that claims it gets its own key (`#/admin/CODE`); the room stores only hashes, and any admin screen can be revoked. Send the link privately rather than showing the QR on the projector.
 - **New devices:** a player who joins after the start waits in the admin panel's *New devices* list; the host hands them an existing character and the old device loses access.
 
 ## Backend (Supabase)

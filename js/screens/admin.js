@@ -1,12 +1,15 @@
 // Admin panel — every host command lives here.
-// Shown as a drawer on the TV (⚙). Phone remote control was removed: a visible key on a big screen = anyone is admin.
+// Shown as a drawer on the TV (⚙), or full-screen on extra admin devices (#/admin/CODE) joined via a
+// single-use, 2-minute invite QR — never a reusable key, so a QR glimpsed on the projector is worthless.
 import { html, useEffect, useState } from '../lib.js';
 import { useT } from '../i18n.js';
 import { CATS } from '../content.js';
-import { alive, findP, estimate, SPEEDS, MIN_PLAYERS } from '../engine.js';
+import { alive, findP, estimate, SPEEDS, MIN_PLAYERS, uid, hashKey, isHost, INVITE_MS } from '../engine.js';
+import { useRoom, useNow, hostKey } from '../transport.js';
 import {
-  LangSwitch, PhaseBadge, Timer, ConfirmButton, hint, primaryLabel,
+  LangSwitch, PhaseBadge, Timer, ConfirmButton, hint, primaryLabel, QR, useLanBase, Brand, UiLang, Loading,
 } from '../ui.js';
+import { NotFound } from './host.js';
 
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
 
@@ -121,6 +124,7 @@ export function AdminPanel({ s, dispatch, onClose }) {
       ${s.phase !== 'lobby' && html`<p class="dim">${t('remove_note')}</p>`}
     </section>
 
+    <${CoHosts} s=${s} dispatch=${dispatch} />
 
     <section class="adm-sec">
       <h3>${t('sec_service')}</h3>
@@ -161,4 +165,78 @@ function MergeRow({ w, chars, dispatch }) {
       onConfirm=${() => dispatch({ type: 'merge', from: w.id, into })} />
     <button class="x" title=${t('dismiss')} onClick=${() => dispatch({ type: 'dropWaiting', id: w.id })}>✕</button>
   </li>`;
+}
+
+/** Extra admin screens: create a single-use invite, list connected devices, revoke them. */
+function CoHosts({ s, dispatch }) {
+  const { t } = useT();
+  const base = useLanBase();
+  const now = useNow(1000);
+  const [token, setToken] = useState(null); // the clear token exists only on this device
+  const [show, setShow] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const inv = s.invite;
+  const mine = token && inv && inv.hash === hashKey(token);
+  const live = mine && !inv.used && now < inv.exp;
+  const url = token ? `${base}#/admin/${s.code}/${token}` : '';
+
+  const create = () => {
+    const tk = uid() + uid() + uid();
+    setToken(tk); setShow(false); setCopied(false);
+    dispatch({ type: 'invite', hash: hashKey(tk), exp: Date.now() + INVITE_MS });
+  };
+  const copy = async () => { try { await navigator.clipboard.writeText(url); setCopied(true); } catch { setCopied(false); } };
+
+  return html`<section class="adm-sec cohosts">
+    <h3>⧉ ${t('sec_cohosts')} · ${(s.admins || []).length}</h3>
+    <p class="dim">${t('cohost_d')}</p>
+    ${live ? html`<div class="invite">
+      <div class="adm-row">
+        <span class="chip">${t('invite_left', { s: Math.max(0, Math.ceil((inv.exp - now) / 1000)) })}</span>
+        <button class="btn sm" onClick=${() => setShow(!show)}>${show ? t('hide_qr') : t('show_qr')}</button>
+        <button class="btn sm ghost" onClick=${copy}>${copied ? t('copied') : t('copy_link')}</button>
+        <button class="x" title=${t('cancel')} onClick=${() => { dispatch({ type: 'cancelInvite' }); setToken(null); }}>✕</button>
+      </div>
+      ${show && html`<div class="invite-qr"><${QR} text=${url} size="180px" /><p class="dim">${t('qr_warn')}</p></div>`}
+    </div>` : html`<div class="adm-row">
+      ${mine && inv.used && html`<span class="chip">✓ ${t('invite_used')}</span>`}
+      ${mine && !inv.used && html`<span class="chip red">${t('invite_expired')}</span>`}
+      <button class="btn sm" onClick=${create}>+ ${t('new_invite')}</button>
+    </div>`}
+    ${(s.admins || []).length > 0 && html`<ul class="adm-players">
+      ${s.admins.map((a) => html`<li><span class="ava">⧉</span><span class="pname">${t('admin_n', { n: a.n })}</span><span class="grow"></span>
+        <${ConfirmButton} label=${t('revoke')} confirmLabel=${t('confirm')} onConfirm=${() => dispatch({ type: 'revokeAdmin', hash: a.hash })} /></li>`)}
+    </ul>`}
+  </section>`;
+}
+
+/** #/admin/CODE[/TOKEN] — an extra admin screen (phone / laptop). */
+export function AdminScreen({ code, token }) {
+  const [s, dispatch] = useRoom(code);
+  const { t } = useT();
+  const [state, setState] = useState('idle'); // idle | claiming | failed
+  const ok = isHost(s, hostKey.get(code));
+
+  useEffect(() => {
+    if (!s || ok || !token || state !== 'idle') return;
+    setState('claiming');
+    const key = uid() + uid() + uid();
+    hostKey.set(code, key);
+    dispatch({ type: 'claimAdmin', token, keyHash: hashKey(key) }).then(() => setTimeout(() => setState('done'), 1500));
+  }, [s && s.version, ok]);
+
+  // once in, drop the (now used) token from the address bar
+  useEffect(() => { if (ok && token) history.replaceState(null, '', `#/admin/${code}`); }, [ok]);
+
+  if (s === undefined) return html`<${Loading} />`;
+  if (!s) return html`<${NotFound} />`;
+  if (!ok) {
+    const msg = state === 'claiming' ? t('claim_wait') : t('claim_fail');
+    return html`<main class="center-screen"><${Brand} small /><div class="panel narrow"><p class=${state === 'claiming' ? 'blink' : ''}>${msg}</p>
+      <a class="btn ghost" href="#/">${t('home')}</a></div></main>`;
+  }
+  return html`<main class="phone admin-screen">
+    <header class="phone-h"><${Brand} small /><span class="grow"></span><${UiLang} /></header>
+    <div class="pad"><${AdminPanel} s=${s} dispatch=${dispatch} /></div>
+  </main>`;
 }

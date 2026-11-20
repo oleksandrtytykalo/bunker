@@ -4,6 +4,7 @@ import { Home } from './screens/home.js';
 import { Host } from './screens/host.js';
 import { Player } from './screens/player.js';
 import { Sandbox } from './screens/sandbox.js';
+import { AdminScreen } from './screens/admin.js';
 
 if (window.self !== window.top) document.documentElement.classList.add('embedded');
 
@@ -17,6 +18,7 @@ function Router() {
   useEffect(() => { const f = () => setR(parse()); addEventListener('hashchange', f); return () => removeEventListener('hashchange', f); }, []);
   if (r.view === 'host' && r.code) return html`<${Host} code=${r.code} />`;
   if (r.view === 'play' && r.code) return html`<${Player} code=${r.code} fresh=${r.fresh} />`;
+  if (r.view === 'admin' && r.code) return html`<${AdminScreen} code=${r.code} token=${r.extra} />`;
   if (r.view === 'sandbox' && r.code) return html`<${Sandbox} code=${r.code} />`;
   return html`<${Home} />`;
 }
