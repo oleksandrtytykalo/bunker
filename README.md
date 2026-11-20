@@ -42,7 +42,11 @@ No build step and nothing to install: Preact + htm and the fonts load from a CDN
 - Known trade-off: the full state reaches every device, so a tech-savvy player could peek at hidden cards in devtools. Moving the reducer into an Edge Function and sending per-player views fixes that.
 
 ## Deploy
-GitHub Pages serves `main` from the repo root. Push to `main` → live in ~1 min.
+GitHub Pages serves `main` from the repo root. Pages lets browsers cache files for 10 min, so **run `python3 bump.py` before every push**: it rewrites `index.html` with versioned URLs (an import map versions every JS module), so players never run stale game code.
+
+```bash
+python3 bump.py && git commit -am "…" && git push
+```
 
 ## Files
 - `js/content.js` — all traits, catastrophes, bunker rooms, action cards (UA + EN, tags, 18+ flag)
